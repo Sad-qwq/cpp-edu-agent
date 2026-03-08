@@ -33,6 +33,14 @@
           <p class="mt-2 text-sm leading-6 text-slate-500">在这里创建或更新作业，具体题目内容可进入作业详情继续维护。</p>
         </div>
 
+        <button
+          type="button"
+          class="mt-5 flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-emerald-700"
+          @click="router.push(`/classes/${classId}/ai-question-generation`)"
+        >
+          打开 AI 智能出题工作台
+        </button>
+
         <form class="mt-5 space-y-4" @submit.prevent="handleSaveAssignment">
           <div class="space-y-2">
             <label class="text-sm font-medium text-slate-700">作业标题</label>

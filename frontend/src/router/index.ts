@@ -122,6 +122,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'classes/:id/ai-question-generation',
+          name: 'ai-question-generation',
+          component: () => import('@/views/assignments/AiQuestionGenerationView.vue'),
+          meta: {
+            title: 'AI 智能出题',
+            description: '基于班级资料与模型生成题目草稿，并发布到现有作业。',
+          },
+        },
+        {
           path: 'classes/:id/materials',
           name: 'class-materials',
           component: () => import('@/views/materials/ClassMaterialsView.vue'),
