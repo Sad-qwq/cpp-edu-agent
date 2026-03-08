@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from app.api.api import api_router
 from app.core.config import settings
@@ -17,6 +18,12 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
+
+# 挂载静态文件目录用于头像等
+import os
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 # 配置 CORS
 app.add_middleware(

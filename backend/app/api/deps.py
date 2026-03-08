@@ -46,6 +46,9 @@ async def get_current_active_user(
 ) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
+    # 未审核教师不可使用教师相关接口
+    if current_user.role == "teacher" and not current_user.is_approved:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teacher account not approved")
     return current_user
 
 async def get_current_admin(
