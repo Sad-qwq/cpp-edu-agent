@@ -11,6 +11,8 @@ from app.api.endpoints import (
 	materials,
 	announcements,
 	model_config,
+	ai_question_generation,
+	knowledge_base,
 )
 
 api_router = APIRouter()
@@ -24,3 +26,5 @@ api_router.include_router(discussion.router, prefix="/discussion", tags=["discus
 api_router.include_router(materials.router, prefix="/materials", tags=["materials"])
 api_router.include_router(announcements.router, prefix="/announcements", tags=["announcements"])
 api_router.include_router(model_config.router, prefix="/model", tags=["model"])
+api_router.include_router(ai_question_generation.router, prefix="/ai", tags=["ai-question-generation"])
+api_router.include_router(knowledge_base.router, prefix="/ai/knowledge", tags=["knowledge-base"])

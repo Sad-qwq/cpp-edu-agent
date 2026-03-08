@@ -1,5 +1,10 @@
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
+
+
+BACKEND_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "C++ Education Agent"
@@ -20,8 +25,16 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "CHANGE_THIS_IN_PRODUCTION_SECRET_KEY_123456" # 生产环境请修改
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7天有效期
+
+    # AI 配置
+    AI_PROVIDER: str = "openai-compatible"
+    AI_BASE_URL: str = "https://api.openai.com/v1"
+    AI_API_KEY: str = ""
+    AI_MODEL_NAME: str = ""
+    AI_EMBEDDING_MODEL: str = ""
+    AI_ENABLE_REMOTE_GENERATION: bool = True
     
     class Config:
-        env_file = ".env"
+        env_file = str(BACKEND_ENV_FILE)
 
 settings = Settings()

@@ -1,10 +1,40 @@
 
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import { useUserStore } from '@/stores/user';
 import { ElMessage } from 'element-plus';
 
+export const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+export const API_ORIGIN = new URL(API_BASE_URL).origin;
+
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    suppressErrorMessage?: boolean;
+    suppressAuthRedirect?: boolean;
+  }
+}
+
+const formatApiError = (detail: unknown) => {
+  if (Array.isArray(detail)) {
+    const firstIssue = detail[0] as { msg?: string; loc?: Array<string | number> } | undefined;
+    if (firstIssue?.msg) {
+      const fieldPath = Array.isArray(firstIssue.loc) ? firstIssue.loc.slice(1).join('.') : '';
+      return fieldPath ? `${fieldPath}: ${firstIssue.msg}` : firstIssue.msg;
+    }
+  }
+
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  if (detail && typeof detail === 'object') {
+    return '请求参数不符合后端接口要求';
+  }
+
+  return 'Unknown Error';
+};
+
 const service = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/v1', // 后端地址
+  baseURL: API_BASE_URL,
   timeout: 5000,
 });
 
@@ -28,8 +58,24 @@ service.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    const msg = error.response?.data?.detail || 'Unknown Error';
-    ElMessage.error(msg);
+    const config = (error.config || {}) as AxiosRequestConfig;
+    const status = error.response?.status as number | undefined;
+    const isLoginRequest = typeof config.url === 'string' && config.url.includes('/auth/login');
+
+    if ((status === 401 || status === 403) && !config.suppressAuthRedirect && !isLoginRequest) {
+      const userStore = useUserStore();
+      userStore.handleSessionExpired();
+
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login?session=expired');
+      }
+    }
+
+    if (!config.suppressErrorMessage) {
+      const msg = formatApiError(error.response?.data?.detail);
+      ElMessage.error(msg);
+    }
+
     return Promise.reject(error);
   }
 );

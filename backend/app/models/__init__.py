@@ -6,3 +6,10 @@ from .notification import Notification
 from .discussion import DiscussionQuestion, DiscussionAnswer, QuestionVote, AnswerVote
 from .material import Material
 from .model_config import ModelConfig, ModelUsageLog
+from .ai_question_generation import (
+	KnowledgeDocument,
+	KnowledgeChunk,
+	QuestionGenerationJob,
+	QuestionDraft,
+	QuestionValidationRun,
+)

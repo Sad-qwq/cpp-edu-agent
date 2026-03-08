@@ -1,45 +1,29 @@
-import asyncio
-import sys
-from pathlib import Path
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncConnection
 
-# Ensure backend directory on path for app imports
-BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent
-sys.path.append(str(BASE_DIR))
-sys.path.append(str(PROJECT_ROOT))
 
-from app.core.config import settings
+async def _column_exists(conn: AsyncConnection, table_name: str, column_name: str) -> bool:
+    query = text(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = :table_name AND column_name = :column_name
+        LIMIT 1
+        """
+    )
+    result = await conn.execute(query, {"table_name": table_name, "column_name": column_name})
+    return result.first() is not None
 
-async def add_columns():
-    print(f"Connecting to database at {settings.DATABASE_URL}...")
-    engine = create_async_engine(settings.DATABASE_URL)
-    async with engine.begin() as conn:
-        print("Adding bio column if missing...")
-        await conn.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS bio VARCHAR;'))
-        print("Adding avatar_url column if missing...")
-        await conn.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;'))
 
-        # Announcement schema backfill for existing databases.
-        print("Adding announcement.is_pinned column if missing...")
-        await conn.execute(
-            text(
-                'ALTER TABLE "announcement" '
-                'ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE;'
-            )
-        )
-        print("Adding announcement.is_active column if missing...")
-        await conn.execute(
-            text(
-                'ALTER TABLE "announcement" '
-                'ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;'
-            )
-        )
-    await engine.dispose()
-    print("Done.")
+async def _add_column_if_missing(conn: AsyncConnection, table_name: str, column_name: str, definition: str) -> None:
+    if await _column_exists(conn, table_name, column_name):
+        return
+    await conn.execute(text(f'ALTER TABLE "{table_name}" ADD COLUMN "{column_name}" {definition}'))
 
-if __name__ == "__main__":
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(add_columns())
+
+async def apply_manual_migrations(conn: AsyncConnection) -> None:
+    await _add_column_if_missing(conn, "problem", "display_order", "INTEGER DEFAULT 0")
+    await _add_column_if_missing(conn, "problem", "options", "JSON")
+    await _add_column_if_missing(conn, "problem", "correct_answer", "VARCHAR")
+    await _add_column_if_missing(conn, "problem", "code_template", "TEXT")
+    await _add_column_if_missing(conn, "problem", "test_cases", "JSON")
