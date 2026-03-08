@@ -55,6 +55,7 @@ const navItems = computed(() => {
     items.splice(3, 0, { key: 'users', label: '用户管理', icon: UserFilled, to: '/admin/users', available: true });
     items.splice(4, 0, { key: 'admin-announcements', label: '平台公告', icon: Document, to: '/admin/announcements', available: true });
     items.splice(5, 0, { key: 'admin-model-config', label: '模型配置', icon: Setting, to: '/admin/model-config', available: true });
+    items.splice(6, 0, { key: 'admin-knowledge-base', label: '公共知识库', icon: Reading, to: '/admin/knowledge-base', available: true });
   }
 
   if (route.path.startsWith('/classes/') && currentClassId.value) {

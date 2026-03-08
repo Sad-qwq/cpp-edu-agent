@@ -1,12 +1,13 @@
 from datetime import datetime
+import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import delete, func, select
+from sqlmodel import func, select
 
-from app.ai.retrieval.chunking import estimate_token_count, split_text
+from app.ai.retrieval.ingest import delete_knowledge_document, upsert_knowledge_document, upsert_material_knowledge_document
 from app.api import deps
 from app.db.session import get_session
 from app.models.ai_question_generation import (
@@ -19,13 +20,34 @@ from app.models.classroom import Classroom
 from app.models.material import Material
 from app.models.user import User, UserRole
 from app.schemas.ai_question_generation import (
+    KnowledgeDocumentListResponse,
     KnowledgeDocumentRead,
     KnowledgeSearchResponse,
 )
 
 router = APIRouter()
 
-BACKEND_ROOT = Path(__file__).resolve().parents[3]
+
+def _ensure_admin(current_user: User) -> None:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Only admin can manage public knowledge base")
+
+
+async def _generate_admin_source_id(session: AsyncSession) -> int:
+    max_int32 = 2_147_483_647
+
+    for _ in range(10):
+        candidate = (uuid.uuid4().int % (max_int32 - 1)) + 1
+        existing = await session.execute(
+            select(KnowledgeDocument.id).where(
+                KnowledgeDocument.source_type == KnowledgeSourceType.ADMIN_MATERIAL,
+                KnowledgeDocument.source_id == candidate,
+            )
+        )
+        if existing.scalar_one_or_none() is None:
+            return candidate
+
+    raise HTTPException(status_code=500, detail="Failed to allocate source id for admin knowledge document")
 
 
 async def _ensure_material_ingest_permission(session: AsyncSession, material: Material, current_user: User) -> Classroom:
@@ -42,53 +64,6 @@ async def _ensure_material_ingest_permission(session: AsyncSession, material: Ma
     raise HTTPException(status_code=403, detail="Not enough permissions")
 
 
-def _resolve_material_file_path(file_url: str) -> Path:
-    relative_path = file_url.replace("/static/", "uploads/").lstrip("/")
-    return BACKEND_ROOT / relative_path
-
-
-def _extract_text_from_material(material: Material, file_path: Path) -> tuple[str, dict[str, Any]]:
-    suffix = file_path.suffix.lower()
-    metadata = {
-        "material_id": material.id,
-        "material_type": material.file_type,
-        "extract_mode": "fallback",
-    }
-
-    if suffix in {".txt", ".md", ".py", ".cpp", ".c", ".h", ".hpp", ".json"} and file_path.exists():
-        text = file_path.read_text(encoding="utf-8", errors="ignore")
-        metadata["extract_mode"] = "direct_text"
-        return text, metadata
-
-    if suffix == ".pdf" and file_path.exists():
-        from pypdf import PdfReader
-
-        reader = PdfReader(str(file_path))
-        text = "\n".join((page.extract_text() or "") for page in reader.pages)
-        metadata["extract_mode"] = "pdf"
-        return text, metadata
-
-    if suffix in {".ppt", ".pptx"} and file_path.exists():
-        from pptx import Presentation
-
-        presentation = Presentation(str(file_path))
-        texts: list[str] = []
-        for slide in presentation.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text:
-                    texts.append(shape.text)
-        metadata["extract_mode"] = "ppt"
-        return "\n".join(texts), metadata
-
-    fallback_parts = [material.title]
-    if material.description:
-        fallback_parts.append(material.description)
-    fallback_parts.append(f"资料类型: {material.file_type}")
-    if material.file_url:
-        fallback_parts.append(f"文件地址: {material.file_url}")
-    return "\n".join(fallback_parts), metadata
-
-
 @router.post("/materials/{material_id}/ingest", response_model=KnowledgeDocumentRead)
 async def ingest_material_to_knowledge_base(
     material_id: int,
@@ -102,79 +77,126 @@ async def ingest_material_to_knowledge_base(
 
     classroom = await _ensure_material_ingest_permission(session, material, current_user)
 
-    existing_result = await session.execute(
-        select(KnowledgeDocument).where(
-            KnowledgeDocument.source_type == KnowledgeSourceType.CLASS_MATERIAL,
-            KnowledgeDocument.source_id == material.id,
-        )
+    document = await upsert_material_knowledge_document(
+        session,
+        material=material,
+        teacher_id=classroom.teacher_id,
     )
-    document = existing_result.scalar_one_or_none()
-    if not document:
-        document = KnowledgeDocument(
-            source_type=KnowledgeSourceType.CLASS_MATERIAL,
-            source_id=material.id,
-            class_id=material.class_id,
-            teacher_id=classroom.teacher_id,
-            title=material.title,
-            file_path=str(_resolve_material_file_path(material.file_url)),
-            mime_type=material.file_type,
-            parse_status=KnowledgeParseStatus.PENDING,
-            metadata_json={"material_id": material.id},
-        )
-        session.add(document)
-        await session.commit()
-        await session.refresh(document)
-
-    document.title = material.title
-    document.file_path = str(_resolve_material_file_path(material.file_url))
-    document.mime_type = material.file_type
-    document.parse_status = KnowledgeParseStatus.PROCESSING
-    document.parse_error = None
-    document.updated_at = datetime.utcnow()
-    session.add(document)
-    await session.commit()
-
-    try:
-        file_path = _resolve_material_file_path(material.file_url)
-        text, metadata = _extract_text_from_material(material, file_path)
-        chunks = split_text(text)
-        if not chunks:
-            raise ValueError("No extractable text found")
-
-        await session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.document_id == document.id))
-        for index, chunk in enumerate(chunks):
-            session.add(
-                KnowledgeChunk(
-                    document_id=document.id,
-                    chunk_index=index,
-                    content=chunk,
-                    content_type="theory",
-                    token_count=estimate_token_count(chunk),
-                    knowledge_tags=[],
-                    metadata_json={
-                        **metadata,
-                        "class_id": material.class_id,
-                        "document_name": material.title,
-                    },
-                    embedding=[],
-                )
-            )
-
-        document.parse_status = KnowledgeParseStatus.COMPLETED
-        document.parse_error = None
-        document.metadata_json = {
-            **document.metadata_json,
-            **metadata,
-            "chunk_count": len(chunks),
-        }
-    except Exception as exc:
-        document.parse_status = KnowledgeParseStatus.FAILED
-        document.parse_error = str(exc)
-
-    document.updated_at = datetime.utcnow()
-    session.add(document)
     await session.commit()
     await session.refresh(document)
+    return document
+
+
+@router.get("/admin-materials", response_model=KnowledgeDocumentListResponse)
+async def list_admin_knowledge_documents(
+    *,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(deps.get_current_active_user),
+    keyword: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 20,
+) -> Any:
+    _ensure_admin(current_user)
+
+    limit = max(1, min(limit, 100))
+    filters = [KnowledgeDocument.source_type == KnowledgeSourceType.ADMIN_MATERIAL]
+    if keyword:
+        like = f"%{keyword}%"
+        filters.append(KnowledgeDocument.title.ilike(like))
+
+    stmt = select(KnowledgeDocument).where(*filters).order_by(KnowledgeDocument.updated_at.desc())
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total = (await session.execute(count_stmt)).scalar_one()
+    result = await session.execute(stmt.offset(skip).limit(limit))
+    items = result.scalars().all()
+    return KnowledgeDocumentListResponse(items=items, total=total)
+
+
+@router.post("/admin-materials", response_model=KnowledgeDocumentRead)
+async def upload_admin_knowledge_document(
+    *,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(deps.get_current_active_user),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+) -> Any:
+    _ensure_admin(current_user)
+
+    admin_dir = Path("uploads/knowledge_base/admin")
+    admin_dir.mkdir(parents=True, exist_ok=True)
+    suffix = Path(file.filename or "").suffix or ""
+    filename = f"{uuid.uuid4()}{suffix}"
+    file_path = admin_dir / filename
+
+    try:
+        with file_path.open("wb") as buffer:
+            buffer.write(await file.read())
+
+        file_url = f"/static/knowledge_base/admin/{filename}"
+        source_id = await _generate_admin_source_id(session)
+        document = await upsert_knowledge_document(
+            session,
+            source_type=KnowledgeSourceType.ADMIN_MATERIAL,
+            source_id=source_id,
+            class_id=None,
+            owner_id=current_user.id,
+            title=title,
+            description=description,
+            file_url=file_url,
+            file_type=(Path(file.filename or "").suffix.lstrip(".") or (file.content_type or "other")).lower(),
+            extra_metadata={
+                "description": description,
+                "file_url": file_url,
+                "original_filename": file.filename,
+                "uploaded_by": current_user.id,
+            },
+        )
+        if document.parse_status != KnowledgeParseStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail=document.parse_error or "Automatic knowledge ingestion failed")
+
+        await session.commit()
+        await session.refresh(document)
+        return document
+    except HTTPException:
+        await session.rollback()
+        if file_path.exists():
+            file_path.unlink()
+        raise
+    except Exception as exc:
+        await session.rollback()
+        if file_path.exists():
+            file_path.unlink()
+        raise HTTPException(status_code=500, detail=f"Admin knowledge upload failed: {exc}") from exc
+
+
+@router.delete("/admin-materials/{document_id}", response_model=KnowledgeDocumentRead)
+async def delete_admin_knowledge_document(
+    document_id: int,
+    *,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(deps.get_current_active_user),
+) -> Any:
+    _ensure_admin(current_user)
+
+    document = await session.get(KnowledgeDocument, document_id)
+    if not document or document.source_type != KnowledgeSourceType.ADMIN_MATERIAL:
+        raise HTTPException(status_code=404, detail="Knowledge document not found")
+
+    file_path = Path(document.file_path) if document.file_path else None
+    try:
+        await delete_knowledge_document(session, document_id=document.id)
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+
+    if file_path and file_path.exists():
+        try:
+            file_path.unlink()
+        except Exception:
+            pass
+
     return document
 
 

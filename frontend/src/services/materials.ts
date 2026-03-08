@@ -1,5 +1,7 @@
 import request from '@/api/request';
 
+const MATERIAL_UPLOAD_TIMEOUT = 120000;
+
 export interface MaterialItem {
   id: number;
   title: string;
@@ -43,6 +45,7 @@ export const uploadMaterial = async (payload: {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: MATERIAL_UPLOAD_TIMEOUT,
   }) as Promise<MaterialItem>;
 };
 

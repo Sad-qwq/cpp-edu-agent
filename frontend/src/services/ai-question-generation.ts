@@ -73,8 +73,12 @@ export interface CreateQuestionGenerationJobPayload {
   extra_constraints?: string;
 }
 
+const AI_GENERATION_TIMEOUT = 120000;
+
 export const createQuestionGenerationJob = async (payload: CreateQuestionGenerationJobPayload) => {
-  return request.post('/ai/question-generation/jobs', payload) as Promise<QuestionGenerationJobRead>;
+  return request.post('/ai/question-generation/jobs', payload, {
+    timeout: AI_GENERATION_TIMEOUT,
+  }) as Promise<QuestionGenerationJobRead>;
 };
 
 export const getQuestionGenerationJobDetail = async (jobId: number) => {
@@ -82,14 +86,18 @@ export const getQuestionGenerationJobDetail = async (jobId: number) => {
 };
 
 export const regenerateQuestionDraft = async (jobId: number, draftId: number) => {
-  return request.post(`/ai/question-generation/jobs/${jobId}/drafts/${draftId}/regenerate`) as Promise<{
+  return request.post(`/ai/question-generation/jobs/${jobId}/drafts/${draftId}/regenerate`, undefined, {
+    timeout: AI_GENERATION_TIMEOUT,
+  }) as Promise<{
     message: string;
     draft: QuestionDraft;
   }>;
 };
 
 export const publishQuestionGenerationJob = async (jobId: number, payload: { assignment_id: number; accepted_draft_ids: number[] }) => {
-  return request.post(`/ai/question-generation/jobs/${jobId}/publish`, payload) as Promise<{
+  return request.post(`/ai/question-generation/jobs/${jobId}/publish`, payload, {
+    timeout: 60000,
+  }) as Promise<{
     created_problem_ids: number[];
     message: string;
   }>;

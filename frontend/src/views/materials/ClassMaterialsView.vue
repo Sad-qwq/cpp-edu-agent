@@ -30,7 +30,7 @@
         <div>
           <p class="text-sm font-medium uppercase tracking-[0.22em] text-cyan-600">Upload Material</p>
           <h3 class="mt-2 text-xl font-semibold text-slate-900">上传班级资料</h3>
-          <p class="mt-2 text-sm leading-6 text-slate-500">支持 PDF、PPT、视频及其他补充文件，上传后立即出现在资料列表中。</p>
+          <p class="mt-2 text-sm leading-6 text-slate-500">支持 PDF、PPTX、视频及其他补充文件，上传成功后会自动完成知识入库并出现在资料列表中。旧版 .ppt 请先转换为 .pptx 或 PDF。</p>
         </div>
 
         <form class="mt-5 space-y-4" @submit.prevent="handleUpload">
@@ -328,7 +328,7 @@ const handleUpload = async () => {
       description: uploadForm.description.trim(),
       file: uploadForm.file,
     });
-    ElMessage.success('资料上传成功');
+    ElMessage.success('资料上传并入库成功');
     uploadForm.title = '';
     uploadForm.description = '';
     uploadForm.file = null;

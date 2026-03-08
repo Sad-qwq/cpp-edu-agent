@@ -140,6 +140,12 @@ for 循环"
               </label>
             </div>
 
+            <div class="rounded-3xl border border-cyan-100 bg-cyan-50/70 px-4 py-4 text-sm leading-6 text-slate-600">
+              <p class="font-medium text-slate-900">为什么需要公共知识库</p>
+              <p class="mt-2">班级资料适合承载本班讲义、作业说明和教师个人授课重点；公共知识库适合沉淀跨班级复用的通用内容，例如 C++ 基础语法、常见算法模板、课程术语解释和题型规范。</p>
+              <p class="mt-2">两者一起使用时，系统会优先结合当前班级上下文，同时补足通用知识背景，减少因为单个班级资料过少而导致的出题漂移。</p>
+            </div>
+
             <div class="flex gap-3">
               <button
                 type="submit"
@@ -207,6 +213,22 @@ for 循环"
           </div>
 
           <div class="flex flex-wrap gap-3">
+            <button
+              type="button"
+              class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition-all duration-300 hover:-translate-y-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+              :disabled="!jobDetail || selectableDraftIds.length === 0"
+              @click="selectAllDrafts"
+            >
+              全选未发布题目
+            </button>
+            <button
+              type="button"
+              class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition-all duration-300 hover:-translate-y-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+              :disabled="selectedDraftIds.length === 0"
+              @click="clearSelectedDrafts"
+            >
+              清空选择
+            </button>
             <select v-model="publishAssignmentId" class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white">
               <option :value="null">选择发布作业</option>
               <option v-for="assignment in assignments" :key="assignment.id" :value="assignment.id">{{ assignment.title }}</option>
@@ -219,6 +241,66 @@ for 循环"
             >
               {{ publishing ? '发布中...' : `发布选中题目 (${selectedDraftIds.length})` }}
             </button>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h4 class="text-base font-semibold text-slate-900">发布目标作业</h4>
+              <p class="mt-1 text-sm text-slate-500">
+                {{ assignments.length ? '可直接选择已有作业发布；若当前班级还没有作业，也可以在这里快速创建。' : '当前班级还没有作业，请先快速创建一个发布目标。' }}
+              </p>
+            </div>
+            <div v-if="assignments.length" class="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+              当前可选作业 {{ assignments.length }} 个
+            </div>
+          </div>
+
+          <div class="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+            <div class="space-y-3">
+              <label class="block space-y-2">
+                <span class="text-sm font-medium text-slate-700">选择已有作业</span>
+                <select v-model="publishAssignmentId" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500">
+                  <option :value="null">选择发布作业</option>
+                  <option v-for="assignment in assignments" :key="assignment.id" :value="assignment.id">{{ assignment.title }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <p class="text-sm font-semibold text-slate-900">快速创建作业并发布</p>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">适合当前班级还没有作业，或者你想把 AI 草稿发布到一个新作业中。</p>
+                </div>
+              </div>
+
+              <div class="mt-4 grid gap-3 md:grid-cols-2">
+                <label class="block space-y-2 md:col-span-2">
+                  <span class="text-sm font-medium text-slate-700">作业标题</span>
+                  <input v-model.trim="quickAssignmentForm.title" type="text" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white" placeholder="例如：函数与数组综合练习" />
+                </label>
+                <label class="block space-y-2 md:col-span-2">
+                  <span class="text-sm font-medium text-slate-700">作业说明</span>
+                  <textarea v-model.trim="quickAssignmentForm.description" rows="3" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white" placeholder="可选：补充作业说明、截止要求或评分方式"></textarea>
+                </label>
+                <label class="block space-y-2">
+                  <span class="text-sm font-medium text-slate-700">截止时间</span>
+                  <input v-model="quickAssignmentForm.dueDate" type="datetime-local" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:bg-white" />
+                </label>
+                <div class="flex items-end">
+                  <button
+                    type="button"
+                    class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition-all duration-300 hover:-translate-y-1 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                    :disabled="creatingAssignment"
+                    @click="handleCreateAssignmentForPublish"
+                  >
+                    {{ creatingAssignment ? '创建中...' : '创建作业并设为发布目标' }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -235,14 +317,15 @@ for 循环"
             <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div class="space-y-3">
                 <div class="flex flex-wrap items-center gap-2">
-                  <label class="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                    <input :checked="selectedDraftIds.includes(draft.id)" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-emerald-600" @change="toggleDraftSelection(draft.id)" />
-                    选中发布
+                  <label class="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700" :class="!isDraftSelectable(draft) ? 'opacity-60' : ''">
+                    <input :checked="selectedDraftIds.includes(draft.id)" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-emerald-600" :disabled="!isDraftSelectable(draft)" @change="toggleDraftSelection(draft.id)" />
+                    {{ isDraftSelectable(draft) ? '选中发布' : '已发布' }}
                   </label>
                   <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">{{ problemTypeLabel(draft.type) }}</span>
                   <span class="rounded-full px-3 py-1 text-xs font-medium" :class="validationBadgeClass(draft.validation_status)">{{ validationLabel(draft.validation_status) }}</span>
                   <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ difficultyLabel(draft.difficulty) }}</span>
                   <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ draft.estimated_score || 0 }} 分</span>
+                  <span v-if="draft.published_problem_id" class="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">已发布到题目 {{ draft.published_problem_id }}</span>
                 </div>
 
                 <div>
@@ -304,7 +387,7 @@ for 循环"
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { type Assignment, listAssignments } from '@/services/assignments';
+import { createAssignment, type Assignment, listAssignments } from '@/services/assignments';
 import {
   createQuestionGenerationJob,
   getQuestionGenerationJobDetail,
@@ -326,6 +409,7 @@ const jobLoading = ref(false);
 const generating = ref(false);
 const publishing = ref(false);
 const regeneratingDraftId = ref<number | null>(null);
+const creatingAssignment = ref(false);
 const selectedDraftIds = ref<number[]>([]);
 const publishAssignmentId = ref<number | null>(null);
 
@@ -349,9 +433,15 @@ const form = reactive({
     hard: 1,
   },
 });
+const quickAssignmentForm = reactive({
+  title: '',
+  description: '',
+  dueDate: '',
+});
 
 const orderedDrafts = computed(() => [...(jobDetail.value?.drafts || [])].sort((left, right) => left.draft_index - right.draft_index));
 const retrievalChunkCount = computed(() => Number((jobDetail.value?.retrieval_summary?.chunk_count as number | undefined) || 0));
+const selectableDraftIds = computed(() => (jobDetail.value?.drafts || []).filter((draft) => !draft.published_problem_id).map((draft) => draft.id));
 
 const loadBaseData = async () => {
   const [classDetail, assignmentList] = await Promise.all([
@@ -360,13 +450,16 @@ const loadBaseData = async () => {
   ]);
   classroom.value = classDetail;
   assignments.value = assignmentList;
+  if (!quickAssignmentForm.title.trim() && form.topic.trim()) {
+    quickAssignmentForm.title = `${form.topic.trim()} AI 练习`;
+  }
 };
 
 const loadJobDetail = async (jobId: number) => {
   jobLoading.value = true;
   try {
     jobDetail.value = await getQuestionGenerationJobDetail(jobId);
-    selectedDraftIds.value = jobDetail.value.drafts.map((draft) => draft.id);
+    selectedDraftIds.value = jobDetail.value.drafts.filter((draft) => !draft.published_problem_id).map((draft) => draft.id);
     if (!publishAssignmentId.value && jobDetail.value.assignment_id) {
       publishAssignmentId.value = jobDetail.value.assignment_id;
     }
@@ -426,12 +519,48 @@ const statusLabel = (status?: string | null) => {
 
 const normalizeNonNegativeInt = (value: number) => Math.max(0, Number.isFinite(value) ? Math.floor(value) : 0);
 
+const isDraftSelectable = (draft: QuestionDraft) => !draft.published_problem_id;
+
 const toggleDraftSelection = (draftId: number) => {
+  if (!selectableDraftIds.value.includes(draftId)) {
+    return;
+  }
   if (selectedDraftIds.value.includes(draftId)) {
     selectedDraftIds.value = selectedDraftIds.value.filter((id) => id !== draftId);
     return;
   }
   selectedDraftIds.value = [...selectedDraftIds.value, draftId];
+};
+
+const selectAllDrafts = () => {
+  selectedDraftIds.value = [...selectableDraftIds.value];
+};
+
+const clearSelectedDrafts = () => {
+  selectedDraftIds.value = [];
+};
+
+const handleCreateAssignmentForPublish = async () => {
+  const fallbackTitle = form.topic.trim() ? `${form.topic.trim()} AI 练习` : 'AI 智能出题练习';
+  const title = quickAssignmentForm.title.trim() || fallbackTitle;
+
+  creatingAssignment.value = true;
+  try {
+    const created = await createAssignment({
+      title,
+      description: quickAssignmentForm.description.trim() || undefined,
+      due_date: quickAssignmentForm.dueDate ? new Date(quickAssignmentForm.dueDate).toISOString() : null,
+      classroom_id: classId.value,
+    });
+    await loadBaseData();
+    publishAssignmentId.value = created.id;
+    quickAssignmentForm.title = '';
+    quickAssignmentForm.description = '';
+    quickAssignmentForm.dueDate = '';
+    ElMessage.success('发布目标作业已创建，可直接发布选中题目');
+  } finally {
+    creatingAssignment.value = false;
+  }
 };
 
 const handleGenerate = async () => {
@@ -475,6 +604,9 @@ const handleGenerate = async () => {
     });
     await loadJobDetail(createdJob.id);
     publishAssignmentId.value = form.assignmentId;
+    if (!quickAssignmentForm.title.trim() && form.topic.trim()) {
+      quickAssignmentForm.title = `${form.topic.trim()} AI 练习`;
+    }
     ElMessage.success('智能出题完成，已生成草稿');
   } finally {
     generating.value = false;

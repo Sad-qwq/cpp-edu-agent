@@ -33,6 +33,29 @@ const formatApiError = (detail: unknown) => {
   return 'Unknown Error';
 };
 
+const formatRequestFailure = (error: unknown) => {
+  if (axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED') {
+      const requestUrl = String(error.config?.url || '');
+      if (requestUrl.includes('/ai/question-generation/')) {
+        return '请求超时，AI 生成耗时较长，请稍后重试';
+      }
+
+      if (requestUrl.includes('/materials') || requestUrl.includes('/ai/knowledge/admin-materials')) {
+        return '文件上传或知识入库耗时较长，请稍后重试';
+      }
+
+      return '请求超时，请稍后重试';
+    }
+
+    if (!error.response) {
+      return '网络请求失败，请检查后端服务或模型接口是否可用';
+    }
+  }
+
+  return null;
+};
+
 const service = axios.create({
   baseURL: API_BASE_URL,
   timeout: 5000,
@@ -72,7 +95,7 @@ service.interceptors.response.use(
     }
 
     if (!config.suppressErrorMessage) {
-      const msg = formatApiError(error.response?.data?.detail);
+      const msg = formatRequestFailure(error) || formatApiError(error.response?.data?.detail);
       ElMessage.error(msg);
     }
 

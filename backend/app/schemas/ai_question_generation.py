@@ -50,6 +50,11 @@ class KnowledgeSearchResponse(BaseModel):
     total: int
 
 
+class KnowledgeDocumentListResponse(BaseModel):
+    items: List[KnowledgeDocumentRead]
+    total: int
+
+
 class QuestionGenerationJobCreate(BaseModel):
     class_id: int
     assignment_id: Optional[int] = None

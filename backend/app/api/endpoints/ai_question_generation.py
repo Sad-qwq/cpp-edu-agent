@@ -87,7 +87,19 @@ async def create_question_generation_job(
     await session.commit()
     await session.refresh(job)
 
-    job = await run_generation_job(session, job.id)
+    try:
+        job = await run_generation_job(session, job.id)
+    except Exception as exc:
+        await session.rollback()
+        failed_job = await session.get(QuestionGenerationJob, job.id)
+        if failed_job:
+            failed_job.status = QuestionGenerationStatus.FAILED
+            failed_job.error_message = str(exc)
+            failed_job.finished_at = datetime.utcnow()
+            session.add(failed_job)
+            await session.commit()
+        raise HTTPException(status_code=500, detail=f"Question generation failed: {exc}") from exc
+
     return job
 
 
@@ -170,6 +182,10 @@ async def publish_question_generation_job(
     drafts = drafts_result.scalars().all()
     if len(drafts) != len(payload.accepted_draft_ids):
         raise HTTPException(status_code=400, detail="Some accepted drafts do not belong to this job")
+
+    already_published = [draft.id for draft in drafts if draft.published_problem_id is not None]
+    if already_published:
+        raise HTTPException(status_code=400, detail=f"Some drafts have already been published: {already_published}")
 
     max_order_stmt = select(func.max(Problem.display_order)).where(Problem.assignment_id == assignment.id)
     max_order = (await session.execute(max_order_stmt)).scalar_one_or_none()

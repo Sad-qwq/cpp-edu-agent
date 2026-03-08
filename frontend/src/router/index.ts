@@ -95,6 +95,17 @@ const router = createRouter({
           },
         },
         {
+          path: 'admin/knowledge-base',
+          name: 'admin-knowledge-base',
+          component: () => import('@/views/admin/PublicKnowledgeBaseView.vue'),
+          meta: {
+            requiresAuth: true,
+            adminOnly: true,
+            title: '公共知识库',
+            description: '维护跨班级复用的课程规范、样题库与公共教学资料。',
+          },
+        },
+        {
           path: 'sandbox',
           name: 'sandbox',
           component: () => import('@/views/sandbox/SandboxView.vue'),
