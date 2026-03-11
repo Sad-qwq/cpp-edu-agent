@@ -38,6 +38,14 @@
             >
               返回班级作业
             </button>
+            <button
+              v-if="assignment && !canManageAssignments"
+              type="button"
+              class="inline-flex items-center justify-center rounded-2xl bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition-all duration-300 hover:-translate-y-1 hover:bg-cyan-100"
+              @click="openAiTutor()"
+            >
+              打开 AI 助学
+            </button>
           </div>
 
           <div class="mt-6 grid gap-4 md:grid-cols-3">
@@ -284,6 +292,16 @@
                   :disabled="canManageAssignments"
                   @input="updateAnswer(problem.id, ($event.target as HTMLTextAreaElement).value)"
                 ></textarea>
+
+                <div v-if="!canManageAssignments" class="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    class="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700 transition-all duration-300 hover:-translate-y-1 hover:bg-cyan-100"
+                    @click="openAiTutor(problem.id, problem.type === 'coding' ? 'code_review' : 'hint')"
+                  >
+                    {{ problem.type === 'coding' ? 'AI 解释代码问题' : 'AI 提示这道题' }}
+                  </button>
+                </div>
               </div>
             </article>
           </div>
@@ -897,6 +915,21 @@ const goBack = () => {
   }
 
   router.push('/classes');
+};
+
+const openAiTutor = (problemId?: number, mode: 'hint' | 'code_review' = 'hint') => {
+  if (!assignment.value) {
+    return;
+  }
+
+  router.push({
+    path: `/classes/${assignment.value.classroom_id}/ai-tutor`,
+    query: {
+      assignmentId: String(assignment.value.id),
+      problemId: problemId ? String(problemId) : undefined,
+      mode,
+    },
+  });
 };
 
 onMounted(() => {

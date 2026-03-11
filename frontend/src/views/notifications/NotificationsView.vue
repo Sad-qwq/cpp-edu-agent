@@ -62,7 +62,7 @@
 
       <div v-else-if="notifications.length" class="mt-6 space-y-4">
         <article
-          v-for="notification in notifications"
+          v-for="notification in paginatedNotifications"
           :key="notification.id"
           class="rounded-[24px] border p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
           :class="notification.is_read ? 'border-slate-200 bg-white' : 'border-orange-200 bg-orange-50/60'"
@@ -102,6 +102,19 @@
             </div>
           </div>
         </article>
+
+        <div class="flex justify-center border-t border-slate-100 pt-2">
+          <el-pagination
+            background
+            layout="prev, pager, next, sizes, total"
+            :current-page="page"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="notifications.length"
+            @current-change="handlePageChange"
+            @size-change="handlePageSizeChange"
+          />
+        </div>
       </div>
 
       <div v-else class="mt-10 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -125,8 +138,14 @@ const userStore = useUserStore();
 const loading = ref(false);
 const markingAll = ref(false);
 const notifications = ref<NotificationItem[]>([]);
+const page = ref(1);
+const pageSize = ref(10);
 
 const unreadCount = computed(() => notifications.value.filter((item) => !item.is_read).length);
+const paginatedNotifications = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return notifications.value.slice(start, start + pageSize.value);
+});
 const roleLabel = computed(() => {
   const roleMap: Record<string, string> = {
     admin: '管理员',
@@ -155,6 +174,10 @@ const loadNotifications = async () => {
   loading.value = true;
   try {
     notifications.value = await listNotifications({ limit: 100 });
+    const maxPage = Math.max(1, Math.ceil(notifications.value.length / pageSize.value));
+    if (page.value > maxPage) {
+      page.value = maxPage;
+    }
   } finally {
     loading.value = false;
   }
@@ -184,6 +207,15 @@ const handleOpenLink = async (notification: NotificationItem) => {
   if (notification.link) {
     router.push(notification.link);
   }
+};
+
+const handlePageChange = (nextPage: number) => {
+  page.value = nextPage;
+};
+
+const handlePageSizeChange = (nextSize: number) => {
+  pageSize.value = nextSize;
+  page.value = 1;
 };
 
 onMounted(() => {

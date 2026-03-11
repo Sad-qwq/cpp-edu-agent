@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
+import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +42,8 @@ REGENERATION_ANGLES = {
         "函数封装实现",
     ],
 }
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_distribution(raw_distribution: dict[str, int], total_count: int) -> list[str]:
@@ -525,7 +528,12 @@ async def _generate_with_provider(
     )
     system_prompt = _build_system_prompt()
 
-    response = await provider.generate_json(system_prompt=system_prompt, user_prompt=user_prompt, schema=schema)
+    try:
+        response = await provider.generate_json(system_prompt=system_prompt, user_prompt=user_prompt, schema=schema)
+    except Exception as exc:
+        logger.warning("Remote draft generation failed, falling back to local templates: %s", exc)
+        return []
+
     drafts = response.get("drafts") if isinstance(response, dict) else None
     return drafts if isinstance(drafts, list) else []
 
@@ -587,7 +595,12 @@ async def _regenerate_single_with_provider(
         f"可用资料：\n{context}"
     )
 
-    response = await provider.generate_json(system_prompt=_build_system_prompt(), user_prompt=user_prompt, schema=schema)
+    try:
+        response = await provider.generate_json(system_prompt=_build_system_prompt(), user_prompt=user_prompt, schema=schema)
+    except Exception as exc:
+        logger.warning("Remote draft regeneration failed, falling back to local template: %s", exc)
+        return None
+
     regenerated = response.get("draft") if isinstance(response, dict) else None
     return regenerated if isinstance(regenerated, dict) else None
 

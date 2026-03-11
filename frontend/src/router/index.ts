@@ -142,6 +142,15 @@ const router = createRouter({
           },
         },
         {
+          path: 'classes/:id/ai-tutor',
+          name: 'ai-tutor',
+          component: () => import('@/views/ai/AiTutorView.vue'),
+          meta: {
+            title: 'AI 智能助学',
+            description: '基于班级资料、作业和题目上下文提供概念讲解、提示与代码纠错。',
+          },
+        },
+        {
           path: 'classes/:id/materials',
           name: 'class-materials',
           component: () => import('@/views/materials/ClassMaterialsView.vue'),

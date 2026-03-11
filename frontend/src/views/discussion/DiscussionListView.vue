@@ -185,6 +185,19 @@
             </button>
           </div>
         </article>
+
+        <div class="flex justify-center border-t border-slate-100 pt-2">
+          <el-pagination
+            background
+            layout="prev, pager, next, sizes, total"
+            :current-page="page"
+            :page-size="pageSize"
+            :page-sizes="[10, 20, 50]"
+            :total="total"
+            @current-change="handlePageChange"
+            @size-change="handlePageSizeChange"
+          />
+        </div>
       </div>
 
       <div v-else class="mt-10 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -196,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import request from '@/api/request';
@@ -218,6 +231,8 @@ const creating = ref(false);
 const total = ref(0);
 const questions = ref<DiscussionQuestion[]>([]);
 const classroom = ref<ClassroomDetail | null>(null);
+const page = ref(1);
+const pageSize = ref(10);
 
 const filters = reactive({
   keyword: '',
@@ -264,6 +279,8 @@ const loadQuestions = async () => {
         status: filters.status || undefined,
         keyword: filters.keyword.trim() || undefined,
         sort_by: filters.sortBy,
+        skip: (page.value - 1) * pageSize.value,
+        limit: pageSize.value,
       }),
     ]);
     classroom.value = classroomDetail;
@@ -308,6 +325,25 @@ const handleQuestionUpvote = async (question: DiscussionQuestion) => {
     };
   });
 };
+
+const handlePageChange = (nextPage: number) => {
+  page.value = nextPage;
+  loadQuestions();
+};
+
+const handlePageSizeChange = (nextSize: number) => {
+  pageSize.value = nextSize;
+  page.value = 1;
+  loadQuestions();
+};
+
+watch(
+  () => [filters.status, filters.sortBy],
+  () => {
+    page.value = 1;
+    loadQuestions();
+  },
+);
 
 onMounted(() => {
   loadQuestions();

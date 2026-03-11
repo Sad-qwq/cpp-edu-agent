@@ -86,12 +86,13 @@ async def create_question_generation_job(
     session.add(job)
     await session.commit()
     await session.refresh(job)
+    job_id = job.id
 
     try:
-        job = await run_generation_job(session, job.id)
+        job = await run_generation_job(session, job_id)
     except Exception as exc:
         await session.rollback()
-        failed_job = await session.get(QuestionGenerationJob, job.id)
+        failed_job = await session.get(QuestionGenerationJob, job_id)
         if failed_job:
             failed_job.status = QuestionGenerationStatus.FAILED
             failed_job.error_message = str(exc)

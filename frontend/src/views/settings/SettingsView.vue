@@ -178,6 +178,52 @@
             </div>
           </form>
         </section>
+
+        <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+          <div class="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
+            <div>
+              <h3 class="text-xl font-semibold text-slate-900">界面主题</h3>
+              <p class="mt-1 text-sm text-slate-500">切换白天或黑夜主题，当前选择会保存在本机浏览器中。</p>
+            </div>
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{{ themeLabel }}</span>
+          </div>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <button
+              type="button"
+              class="rounded-[24px] border p-5 text-left transition-all duration-300"
+              :class="theme === 'light' ? 'border-cyan-300 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-md'"
+              @click="setTheme('light')"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-base font-semibold text-slate-900">白天模式</p>
+                  <p class="mt-2 text-sm leading-6 text-slate-500">浅色界面更清爽，适合白天办公和高频操作。</p>
+                </div>
+                <span class="rounded-full px-3 py-1 text-xs font-medium" :class="theme === 'light' ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500'">
+                  {{ theme === 'light' ? '当前使用' : '点击切换' }}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="rounded-[24px] border p-5 text-left transition-all duration-300"
+              :class="theme === 'dark' ? 'border-slate-700 bg-slate-900 text-white shadow-sm' : 'border-slate-200 bg-white hover:-translate-y-1 hover:shadow-md'"
+              @click="setTheme('dark')"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <p class="text-base font-semibold" :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">黑夜模式</p>
+                  <p class="mt-2 text-sm leading-6" :class="theme === 'dark' ? 'text-slate-300' : 'text-slate-500'">暗色界面更沉浸，适合晚间学习和长时间阅读。</p>
+                </div>
+                <span class="rounded-full px-3 py-1 text-xs font-medium" :class="theme === 'dark' ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-500'">
+                  {{ theme === 'dark' ? '当前使用' : '点击切换' }}
+                </span>
+              </div>
+            </button>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -188,6 +234,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { API_ORIGIN } from '@/api/request';
 import { useUserStore } from '@/stores/user';
+import { applyTheme, getStoredTheme, type AppTheme } from '@/utils/theme';
 import { changeMyPassword, getMyProfile, updateMyProfile, uploadMyAvatar } from '@/services/users';
 
 const userStore = useUserStore();
@@ -196,6 +243,7 @@ const loadingProfile = ref(false);
 const savingProfile = ref(false);
 const savingPassword = ref(false);
 const uploadingAvatar = ref(false);
+const theme = ref<AppTheme>(getStoredTheme());
 
 const profileForm = reactive({
   username: '',
@@ -238,6 +286,7 @@ const approvalLabel = computed(() => {
 
   return userStore.user.is_approved ? '已通过' : '待审核';
 });
+const themeLabel = computed(() => theme.value === 'dark' ? '黑夜模式' : '白天模式');
 
 const syncProfileForm = () => {
   profileForm.username = userStore.user.username || '';
@@ -322,6 +371,16 @@ const handleAvatarUpload = async (event: Event) => {
     uploadingAvatar.value = false;
     input.value = '';
   }
+};
+
+const setTheme = (nextTheme: AppTheme) => {
+  if (theme.value === nextTheme) {
+    return;
+  }
+
+  theme.value = nextTheme;
+  applyTheme(nextTheme);
+  ElMessage.success(`已切换为${nextTheme === 'dark' ? '黑夜' : '白天'}模式`);
 };
 
 onMounted(() => {

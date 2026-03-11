@@ -41,6 +41,10 @@ const formatRequestFailure = (error: unknown) => {
         return '请求超时，AI 生成耗时较长，请稍后重试';
       }
 
+      if (requestUrl.includes('/ai/tutor/')) {
+        return 'AI 助学响应较慢，请稍后重试或缩小问题范围';
+      }
+
       if (requestUrl.includes('/materials') || requestUrl.includes('/ai/knowledge/admin-materials')) {
         return '文件上传或知识入库耗时较长，请稍后重试';
       }
@@ -58,7 +62,7 @@ const formatRequestFailure = (error: unknown) => {
 
 const service = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 5000,
+  timeout: 10000,
 });
 
 // 请求拦截器：自动加 Token

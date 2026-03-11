@@ -21,6 +21,92 @@ from app.schemas.announcement import AnnouncementCreate, AnnouncementRead, Annou
 router = APIRouter()
 
 
+async def _build_classroom_read_payloads(
+    session: AsyncSession,
+    classrooms: list[Classroom],
+    *,
+    current_user: User | None = None,
+) -> list[dict[str, Any]]:
+    if not classrooms:
+        return []
+
+    class_ids = [classroom.id for classroom in classrooms if classroom.id is not None]
+    teacher_ids = list({classroom.teacher_id for classroom in classrooms})
+
+    teacher_result = await session.execute(select(User).where(User.id.in_(teacher_ids)))
+    teacher_map = {teacher.id: teacher.username for teacher in teacher_result.scalars().all()}
+
+    student_count_result = await session.execute(
+        select(ClassMembership.class_id, func.count(ClassMembership.id))
+        .where(
+            ClassMembership.class_id.in_(class_ids),
+            ClassMembership.is_active == True,  # noqa: E712
+        )
+        .group_by(ClassMembership.class_id)
+    )
+    student_count_map = {class_id: count for class_id, count in student_count_result.all()}
+
+    assignment_count_result = await session.execute(
+        select(Assignment.classroom_id, func.count(Assignment.id))
+        .where(Assignment.classroom_id.in_(class_ids))
+        .group_by(Assignment.classroom_id)
+    )
+    assignment_count_map = {class_id: count for class_id, count in assignment_count_result.all()}
+
+    joined_map: dict[int, bool] = {}
+    if current_user and current_user.role == UserRole.STUDENT:
+        membership_result = await session.execute(
+            select(ClassMembership.class_id)
+            .where(
+                ClassMembership.class_id.in_(class_ids),
+                ClassMembership.student_id == current_user.id,
+                ClassMembership.is_active == True,  # noqa: E712
+            )
+        )
+        joined_map = {class_id: True for class_id in membership_result.scalars().all()}
+
+    payloads: list[dict[str, Any]] = []
+    for classroom in classrooms:
+        payload = classroom.dict()
+        payload["teacher_name"] = teacher_map.get(classroom.teacher_id)
+        payload["student_count"] = int(student_count_map.get(classroom.id, 0))
+        payload["assignment_count"] = int(assignment_count_map.get(classroom.id, 0))
+        if current_user and current_user.role == UserRole.STUDENT:
+            payload["already_joined"] = joined_map.get(classroom.id, False)
+        payloads.append(payload)
+    return payloads
+
+
+async def _ensure_classroom_access(
+    session: AsyncSession,
+    class_id: int,
+    current_user: User,
+) -> Classroom:
+    result = await session.execute(select(Classroom).where(Classroom.id == class_id))
+    classroom = result.scalar_one_or_none()
+    if not classroom:
+        raise HTTPException(status_code=404, detail="Classroom not found")
+
+    if current_user.role == UserRole.ADMIN:
+        return classroom
+
+    if classroom.teacher_id == current_user.id:
+        return classroom
+
+    result = await session.execute(
+        select(ClassMembership).where(
+            ClassMembership.class_id == class_id,
+            ClassMembership.student_id == current_user.id,
+            ClassMembership.is_active == True, # noqa: E712
+        )
+    )
+    membership = result.scalar_one_or_none()
+    if membership:
+        return classroom
+
+    raise HTTPException(status_code=403, detail="Not enough permissions")
+
+
 def _generate_invite_code(length: int = 6) -> str:
     alphabet = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
@@ -119,7 +205,7 @@ async def list_my_classrooms(
         )
     )
     classrooms = result.scalars().all()
-    return classrooms
+    return await _build_classroom_read_payloads(session, classrooms, current_user=current_user)
 
 
 @router.post("/join", response_model=ClassroomRead)
@@ -193,7 +279,7 @@ async def list_my_joined_classrooms(
         )
     )
     classrooms = result.scalars().all()
-    return classrooms
+    return await _build_classroom_read_payloads(session, classrooms, current_user=current_user)
 
 
 @router.get("/{class_id}", response_model=ClassroomRead)
@@ -204,32 +290,7 @@ async def get_classroom(
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
     """获取单个班级详情（需为该班成员或教师/管理员）。"""
-    result = await session.execute(select(Classroom).where(Classroom.id == class_id))
-    classroom = result.scalar_one_or_none()
-    if not classroom:
-        raise HTTPException(status_code=404, detail="Classroom not found")
-
-    # 权限检查
-    has_permission = False
-    if current_user.role == UserRole.ADMIN:
-        has_permission = True
-    elif classroom.teacher_id == current_user.id:
-        has_permission = True
-    else:
-        # 检查是否为成员
-        result = await session.execute(
-            select(ClassMembership).where(
-                ClassMembership.class_id == class_id,
-                ClassMembership.student_id == current_user.id,
-                ClassMembership.is_active == True, # noqa: E712
-            )
-        )
-        membership = result.scalar_one_or_none()
-        if membership:
-            has_permission = True
-            
-    if not has_permission:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+    classroom = await _ensure_classroom_access(session, class_id, current_user)
 
     # 获取教师名称
     teacher = await session.get(User, classroom.teacher_id)
@@ -334,8 +395,7 @@ async def list_announcements(
     limit: int = 50,
 ) -> Any:
     """班级公告列表，班级成员/教师/管理员可见。"""
-    # 权限复用 get_classroom 权限判定
-    await get_classroom(class_id, session=session, current_user=current_user)
+    await _ensure_classroom_access(session, class_id, current_user)
 
     stmt = (
         select(Announcement)

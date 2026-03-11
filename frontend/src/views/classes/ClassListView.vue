@@ -1,7 +1,9 @@
 <template>
   <div class="space-y-6">
     <section class="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <div class="rounded-[28px] bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-sm sm:p-7">
+      <div class="relative overflow-hidden rounded-[30px] bg-[radial-gradient(circle_at_top_right,_rgba(37,99,235,0.24),_transparent_26%),linear-gradient(135deg,_#0f172a,_#123153_44%,_#2563eb_100%)] p-6 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:p-7">
+        <div class="app-orb left-[-2rem] top-[-2rem] h-36 w-36 bg-blue-300/16"></div>
+        <div class="app-orb bottom-[-3rem] right-[-1rem] h-44 w-44 bg-cyan-300/16"></div>
         <div class="space-y-4">
           <div class="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-blue-100">
             班级工作台
@@ -26,7 +28,7 @@
         </div>
       </div>
 
-      <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+      <div class="app-panel rounded-[30px] p-6 sm:p-7">
         <div v-if="isTeachingRole" class="space-y-5">
           <div>
             <p class="text-sm font-medium uppercase tracking-[0.22em] text-blue-600">Create Class</p>
@@ -41,13 +43,13 @@
                 v-model="createForm.name"
                 type="text"
                 placeholder="例如：2026 春季 C++ 提高班"
-                class="h-[52px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-800 outline-none transition-all duration-300 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                class="h-[52px] w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 text-sm text-slate-800 outline-none transition-all duration-300 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
               />
             </div>
 
             <button
               type="submit"
-              class="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-blue-700 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-blue-400"
+              class="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,_#2563eb,_#1d4ed8,_#0f766e)] px-4 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(37,99,235,0.22)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(37,99,235,0.28)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="createLoading"
             >
               <span v-if="createLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
@@ -71,13 +73,13 @@
                 type="text"
                 maxlength="6"
                 placeholder="例如：A1B2C3"
-                class="h-[52px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm uppercase tracking-[0.2em] text-slate-800 outline-none transition-all duration-300 placeholder:tracking-normal placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                class="h-[52px] w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 text-sm uppercase tracking-[0.2em] text-slate-800 outline-none transition-all duration-300 placeholder:tracking-normal placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
               />
             </div>
 
             <button
               type="submit"
-              class="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:bg-blue-700 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-blue-400"
+              class="flex h-[52px] w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,_#2563eb,_#1d4ed8,_#0f766e)] px-4 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(37,99,235,0.22)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_46px_rgba(37,99,235,0.28)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
               :disabled="previewLoading"
             >
               <span v-if="previewLoading" class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"></span>
@@ -85,7 +87,7 @@
             </button>
           </form>
 
-          <div v-if="previewClassroom" class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div v-if="previewClassroom" class="rounded-[24px] border border-slate-200/80 bg-[linear-gradient(180deg,_rgba(239,246,255,0.78)_0%,_rgba(255,255,255,0.82)_100%)] p-4 shadow-sm">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <h4 class="text-base font-semibold text-slate-900">{{ previewClassroom.name }}</h4>
@@ -99,7 +101,7 @@
             <div class="mt-4 flex gap-3">
               <button
                 type="button"
-                class="flex-1 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:bg-blue-700"
+                class="flex-1 rounded-2xl bg-[linear-gradient(135deg,_#2563eb,_#1d4ed8,_#0f766e)] px-4 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-sm"
                 @click="handleJoinClass"
               >
                 {{ previewClassroom.already_joined ? '进入班级' : '确认加入' }}
@@ -117,7 +119,7 @@
       </div>
     </section>
 
-    <section class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+    <section class="app-panel rounded-[30px] p-6 sm:p-7">
       <div class="flex flex-col gap-3 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 class="text-xl font-semibold text-slate-900">{{ listTitle }}</h2>
@@ -125,7 +127,7 @@
         </div>
         <button
           type="button"
-          class="inline-flex items-center justify-center rounded-2xl bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-300 hover:-translate-y-1 hover:bg-blue-100"
+          class="inline-flex items-center justify-center rounded-2xl bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition-all duration-300 hover:-translate-y-1 hover:bg-blue-100 hover:shadow-sm"
           @click="loadClasses"
         >
           刷新列表
@@ -147,7 +149,7 @@
         <article
           v-for="classroom in classes"
           :key="classroom.id"
-          class="cursor-pointer rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+          class="app-panel cursor-pointer rounded-[26px] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(15,23,42,0.12)]"
           @click="router.push(`/classes/${classroom.id}`)"
         >
           <div class="flex items-start justify-between gap-4">
@@ -155,15 +157,15 @@
               <p class="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">班级</p>
               <h3 class="mt-3 text-xl font-semibold text-slate-900">{{ classroom.name }}</h3>
             </div>
-            <span class="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">活跃</span>
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700 shadow-sm shadow-emerald-100/60">活跃</span>
           </div>
 
           <div class="mt-5 grid grid-cols-2 gap-3">
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="rounded-2xl bg-slate-50/80 p-4">
               <p class="text-xs text-slate-400">邀请码</p>
               <p class="mt-2 text-lg font-semibold tracking-[0.18em] text-slate-900">{{ classroom.invite_code }}</p>
             </div>
-            <div class="rounded-2xl bg-slate-50 p-4">
+            <div class="rounded-2xl bg-slate-50/80 p-4">
               <p class="text-xs text-slate-400">教师</p>
               <p class="mt-2 text-lg font-semibold text-slate-900">{{ classroom.teacher_name || '待查看' }}</p>
             </div>
@@ -180,7 +182,7 @@
         </article>
       </div>
 
-      <div v-else class="mt-10 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+      <div v-else class="mt-10 rounded-[24px] border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
         <h3 class="text-lg font-semibold text-slate-900">{{ emptyTitle }}</h3>
         <p class="mt-2 text-sm leading-6 text-slate-500">{{ emptyDescription }}</p>
       </div>
@@ -274,19 +276,7 @@ const loadClasses = async () => {
 
   try {
     const endpoint = isTeachingRole.value ? '/classes/teaching' : '/classes/my';
-    const list = await request.get(endpoint) as ClassroomItem[];
-    const details = await Promise.all(
-      list.map(async (item) => {
-        try {
-          return await request.get(`/classes/${item.id}`, {
-            suppressErrorMessage: true,
-          }) as ClassroomItem;
-        } catch {
-          return item;
-        }
-      }),
-    );
-    classes.value = details;
+    classes.value = await request.get(endpoint) as ClassroomItem[];
     updateLastUpdated();
   } catch (error) {
     classes.value = [];

@@ -126,9 +126,10 @@
         </div>
       </div>
 
-      <div v-else-if="assignments.length" class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div v-else-if="assignments.length" class="mt-6 space-y-6">
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article
-          v-for="assignment in assignments"
+          v-for="assignment in paginatedAssignments"
           :key="assignment.id"
           class="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
         >
@@ -189,6 +190,20 @@
             </template>
           </div>
         </article>
+        </div>
+
+        <div class="flex justify-center border-t border-slate-100 pt-2">
+          <el-pagination
+            background
+            layout="prev, pager, next, sizes, total"
+            :current-page="page"
+            :page-size="pageSize"
+            :page-sizes="[6, 9, 12]"
+            :total="assignments.length"
+            @current-change="handlePageChange"
+            @size-change="handlePageSizeChange"
+          />
+        </div>
       </div>
 
       <div v-else class="mt-10 rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
@@ -218,6 +233,8 @@ const editingAssignmentId = ref<number | null>(null);
 const deletingAssignmentId = ref<number | null>(null);
 const classroom = ref<ClassroomDetail | null>(null);
 const assignments = ref<Assignment[]>([]);
+const page = ref(1);
+const pageSize = ref(6);
 
 const createForm = reactive({
   title: '',
@@ -226,6 +243,10 @@ const createForm = reactive({
 });
 
 const canManageAssignments = computed(() => userStore.user.role === 'teacher' || userStore.user.role === 'admin');
+const paginatedAssignments = computed(() => {
+  const start = (page.value - 1) * pageSize.value;
+  return assignments.value.slice(start, start + pageSize.value);
+});
 
 const formatDateTime = (value?: string | null) => {
   if (!value) {
@@ -280,6 +301,10 @@ const loadData = async () => {
     ]);
     classroom.value = classDetail;
     assignments.value = assignmentList;
+    const maxPage = Math.max(1, Math.ceil(assignmentList.length / pageSize.value));
+    if (page.value > maxPage) {
+      page.value = maxPage;
+    }
   } finally {
     loading.value = false;
   }
@@ -297,6 +322,15 @@ const startEditAssignment = (assignment: Assignment) => {
   createForm.title = assignment.title;
   createForm.description = assignment.description || '';
   createForm.due_date = assignment.due_date ? new Date(assignment.due_date).toISOString().slice(0, 16) : '';
+};
+
+const handlePageChange = (nextPage: number) => {
+  page.value = nextPage;
+};
+
+const handlePageSizeChange = (nextSize: number) => {
+  pageSize.value = nextSize;
+  page.value = 1;
 };
 
 const handleSaveAssignment = async () => {

@@ -7,7 +7,10 @@ import './style.css'
 import App from './App.vue'
 import router from './router'
 import { useUserStore } from './stores/user'
+import { initializeTheme } from './utils/theme'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+
+initializeTheme()
 
 const app = createApp(App)
 const pinia = createPinia()
